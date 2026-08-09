@@ -34,7 +34,7 @@ export class SelectTypeComponent implements OnInit {
         if (this.items.length) {
           if (this.selectedId) {
             this._selectedId = this.selectedId;
-            const idx = _.findIndex(this.items, { status_id: this.selectedId });
+            const idx = _.findIndex(this.items, { 'type_id': this.selectedId });
             if (idx > -1) {
               this.onChange.emit(this.items[idx]);
             } else {
@@ -51,12 +51,12 @@ export class SelectTypeComponent implements OnInit {
       }
     } catch (error) {
       console.log(error);
-      this.alertService.error()
+      this.alertService.error();
     }
   }
 
   setSelected(event: any) {
-    const idx = _.findIndex(this.items, { status_id: +event.target.value });
+    const idx = _.findIndex(this.items, { 'type_id': event.target.value });
     if (idx > -1) {
       this.onChange.emit(this.items[idx]);
     }

@@ -68,6 +68,9 @@ export class NewComponent implements OnInit {
   selectedQty: number = null;
   selectedConversionQty: number = null;
   selectedPrimaryUnitName: any = null;
+  selectedContractId: any = null;
+  selectedContractNo: any = null;
+  selectedContractPrepare: any = null;
 
   constructor(
     private contractService: ContractService,
@@ -221,6 +224,10 @@ export class NewComponent implements OnInit {
     this.selectedGenericId = event ? event.generic_id : null;
     this.selectedProductId = event ? event.product_id : null;
     this.selectedProductName = event ? event.product_name : null;
+    this.selectedContractId = event ? event.contract_id : null;
+    this.selectedContractNo = event ? event.contract_no : null;
+    this.selectedContractPrepare = event ? event.prepare_no : null;
+
     this.selectUnit.getUnits(this.selectedGenericId);
   }
 
@@ -232,27 +239,33 @@ export class NewComponent implements OnInit {
   }
 
   addProduct() {
-    if (this.selectedCost && this.selectedProductId && this.selectedUnitGenericId && this.selectedQty) {
-      let obj: any = {};
-      obj.product_id = this.selectedProductId;
-      obj.generic_id = this.selectedGenericId;
-      obj.product_name = this.selectedProductName;
-      obj.unit_generic_id = this.selectedUnitGenericId;
-      obj.cost = this.selectedCost;
-      obj.qty = this.selectedQty;
-      obj.conversion_qty = this.selectedConversionQty;
-      obj.primary_unit_name = this.selectedPrimaryUnitName;
-      
-      let _idx = _.findIndex(this.products, { product_id: this.selectedProductId });
-      if (_idx > -1) {
-        this.alertService.error('มีรายการสินค้านี้อยู่แล้ว');
-      } else {
-        this.products.push(obj);
-        this.countTotal();
-        this.clearForm();
-      }
+    if (this.selectedContractId) { // มีสัญญา
+      this.alertService.error(`รายการนี้อยู่ในสัญญาแล้ว เลขที่สัญญา ${this.selectedContractNo}`);
     } else {
-      this.alertService.error('กรุณาระบุข้อมูลให้ครบถ้วน')
+
+      if (this.selectedCost && this.selectedProductId && this.selectedUnitGenericId && this.selectedQty) {
+        let obj: any = {};
+        obj.product_id = this.selectedProductId;
+        obj.generic_id = this.selectedGenericId;
+        obj.product_name = this.selectedProductName;
+        obj.unit_generic_id = this.selectedUnitGenericId;
+        obj.cost = this.selectedCost;
+        obj.qty = this.selectedQty;
+        obj.conversion_qty = this.selectedConversionQty;
+        obj.primary_unit_name = this.selectedPrimaryUnitName;
+
+        let _idx = _.findIndex(this.products, { product_id: this.selectedProductId });
+        if (_idx > -1) {
+          this.alertService.error('มีรายการสินค้านี้อยู่แล้ว');
+        } else {
+          this.products.push(obj);
+          this.countTotal();
+          this.clearForm();
+        }
+      } else {
+        this.alertService.error('กรุณาระบุข้อมูลให้ครบถ้วน')
+      }
+      
     }
   }
 
@@ -260,7 +273,7 @@ export class NewComponent implements OnInit {
     let idx = _.findIndex(this.products, { product_id: product.product_id });
     if (idx > -1) {
       this.products[idx].unit_generic_id = event ? event.unit_generic_id : null;
-      this.products[idx].cost = event ? event.cost : 0;
+      // this.products[idx].cost = event ? event.cost : 0;
       this.products[idx].conversion_qty = event ? event.qty : 0;
 
       this.countTotal();
@@ -348,20 +361,35 @@ export class NewComponent implements OnInit {
             contract.buyerPosition = this.buyerPosition;
             contract.isApproved = this.isApproved ? 'Y' : 'N';
 
-            let rs: any;
-            if (this.contractId) {
-              rs = await this.contractService.updateContract(this.contractId, contract, this.products);
+            let isSuccess = true;
+
+            if (this.isApproved && this.contractNo) {
+              isSuccess = true;
+            } else if (this.isApproved && !this.contractNo) {
+              this.alertService.error('กรุณาระบุเลขที่สัญญา');
+              isSuccess = false;
             } else {
-              rs = await this.contractService.saveContract(contract, this.products);
+              isSuccess = true;
             }
 
-            if (rs.ok) {
-              this.router.navigate(['/apps/contracts']);
-            } else {
-              this.alertService.error(rs.error);
+            if (isSuccess) {
+              let rs: any;
+              if (this.contractId) {
+                rs = await this.contractService.updateContract(this.contractId, contract, this.products);
+              } else {
+                rs = await this.contractService.saveContract(contract, this.products);
+              }
+
+              if (rs.ok) {
+                this.router.navigate(['/apps/contracts']);
+              } else {
+                this.alertService.error(rs.error);
+              }
             }
+
             this.loading = false;
             this.cmLoading.hide();
+
           } catch (error) {
             this.loading = false;
             this.cmLoading.hide();

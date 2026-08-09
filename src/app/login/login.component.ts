@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { LoginService } from '../services/login.service';
 import { AlertService } from '../services/alert.service';
+import { JwtHelper } from 'angular2-jwt';
+import * as _ from 'lodash';
 
 @Component({
   selector: 'cm-login',
@@ -19,9 +21,31 @@ export class LoginComponent implements OnInit {
   warehouses = [];
   userWarehouseId: any;
 
-  constructor(private router: Router, private loginService: LoginService, private alertService: AlertService) { }
+  jwtHelper: JwtHelper = new JwtHelper();
+  token: string;
+
+  constructor(private router: Router, private loginService: LoginService, private alertService: AlertService) {
+    this.token = sessionStorage.getItem('token');
+  }
 
   ngOnInit() {
+    if (this.token) {
+      const decodedToken = this.jwtHelper.decodeToken(this.token);
+      const accessRight = decodedToken.accessRight;
+
+      try {
+        const rights = accessRight.split(',');
+
+        if (_.indexOf(rights, 'CM_ADMIN') > -1) {
+          this.router.navigate(['apps']);
+        } else {
+          this.alertService.error('ไม่มีสิทธิ์ในการเข้าถึง กรุณาลองไหม่');
+          this.router.navigate(['/login']);
+        }
+      } catch (error) {
+        this.router.navigate(['/login']);
+      }
+    }
   }
 
   enterLogin(event: any) {
@@ -59,14 +83,26 @@ export class LoginComponent implements OnInit {
     }
   }
 
-  /** เก็บ token แล้วพาเข้าระบบ — ตรรกะเดิมทุกประการ */
+  /**
+   * เก็บ token แล้วพาเข้าระบบ
+   * การตรวจสิทธิ์ CM_ADMIN มาจาก upstream ย้ายมารวมไว้ที่นี่ที่เดียว
+   * เพราะตอนนี้ token ถูกออกได้จาก 2 ทาง (login ตรง หรือหลังทำขั้นตอน 2FA จบ)
+   */
   private enterSystem(token: string) {
     sessionStorage.setItem('token', token);
 
     this.closeAllSteps();
     this.isLogging = false;
 
-    this.router.navigate(['/apps']);
+    const decodedToken = this.jwtHelper.decodeToken(token);
+    const accessRight = decodedToken.accessRight;
+    const rights = accessRight ? accessRight.split(',') : [];
+
+    if (_.indexOf(rights, 'CM_ADMIN') > -1) {
+      this.router.navigate(['/apps']);
+    } else {
+      this.alertService.error('ไม่มีสิทธิ์ในการเข้าถึง กรุณาลองไหม่');
+    }
   }
 
   async selectWarehouse(event: any) {
